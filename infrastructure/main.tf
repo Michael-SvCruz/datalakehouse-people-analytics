@@ -4,7 +4,7 @@ locals {
   # bronze: onde o arquivo vira Delta Lake com metadados
   # silver: dados limpos
   # gold: dados agregados para BI
-  layers = ["landing", "bronze", "silver", "gold"]
+  layers = ["00-landing", "01-bronze", "02-silver", "03-gold"]
 }
 
 # 1. Create S3 buckets for each layer

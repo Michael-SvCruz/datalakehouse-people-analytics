@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "bucket_prefix" {
   description = "Prefix for S3 bucket names"
   type        = string
-  default     = "182399721888"
+  default     = "rh-182399721888"
 }
 
 variable "env" {
