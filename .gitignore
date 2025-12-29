@@ -215,3 +215,6 @@ var.tfvars
 
 # Anotações
 anotacoes.txt
+
+# Data Generator Outputs
+/data
