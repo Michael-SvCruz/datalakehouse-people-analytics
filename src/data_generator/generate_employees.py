@@ -9,9 +9,8 @@ fake = Faker('pt_BR')
 Faker.seed(42)
 
 # Configurações do Gerador
-TOTAL_REGISTROS = 150 # Aumentei um pouco para garantir volume após preencher os obrigatórios
+TOTAL_REGISTROS = 200 # Aumentei um pouco para garantir volume após preencher os obrigatórios
 OUTPUT_DIR = "../../data"
-OUTPUT_FILE = "employees.csv"
 
 # 
 # ESTRUTURA ORGANIZACIONAL COM PESOS
@@ -150,7 +149,7 @@ def criar_dados_funcionario(dept_fixo=None, cargo_fixo=None):
         "nome": nome,
         "cpf": fake.cpf(),
         "data_nascimento": fake.date_of_birth(minimum_age=18, maximum_age=65).isoformat(),
-        "endereco": fake.address().replace('\n', ', '),
+        "endereco": f"{fake.street_address()}, São Paulo - SP, CEP {fake.postcode()}",
         "telefone": fake.phone_number(),
         "departamento": departamento,
         "cargo": cargo,
@@ -161,9 +160,18 @@ def criar_dados_funcionario(dept_fixo=None, cargo_fixo=None):
     }
 
 def main():
+    
+    # Gera string de data/hora: ex: 20251217_153000
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Nome final ex: employees_20251217_153000.csv
+    nome_arquivo_dinamico = f"employees_{timestamp_str}.csv"
+    
     caminho_completo_dir = os.path.join(os.path.dirname(__file__), OUTPUT_DIR)
     garantir_diretorio(caminho_completo_dir)
-    arquivo_saida = os.path.join(caminho_completo_dir, OUTPUT_FILE)
+    
+    # Caminho completo com o novo nome
+    arquivo_saida = os.path.join(caminho_completo_dir, nome_arquivo_dinamico)
     
     print(f"🚀 Iniciando geração híbrida (Garantia de Cargos + Pesos)...")
     

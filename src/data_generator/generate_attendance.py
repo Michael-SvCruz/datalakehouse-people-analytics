@@ -3,13 +3,13 @@ import json
 import os
 import random
 import uuid
+import glob
 from datetime import datetime, timedelta, time
 
 # ==========================================
 # CONFIGURAÇÕES GERAIS
 # ==========================================
-INPUT_FILE = "../../data/employees.csv"
-OUTPUT_FILE = "../../data/attendance.json"
+INPUT_DIR = "../../data"
 DATA_INICIO = datetime(2023, 1, 1)
 DATA_FIM = datetime.now()
 
@@ -20,18 +20,26 @@ PROB_HORA_EXTRA = 0.10       # 10% de chance de sair mais tarde
 PROB_TRABALHO_FDS = 0.15     # 15% de chance de trabalhar Sábado ou Domingo (Gera escala > 7 dias)
 PROB_FALTA = 0.01            # 1% de chance de faltar em dia normal (Absenteísmo)
 
-def carregar_funcionarios():
-    """Lê o arquivo CSV gerado anteriormente."""
-    caminho = os.path.join(os.path.dirname(__file__), INPUT_FILE)
-    funcionarios = []
-    if not os.path.exists(caminho):
-        print(f"❌ Erro: Arquivo {INPUT_FILE} não encontrado. Rode o generate_employees.py primeiro.")
+def carregar_funcionarios_mais_recente():
+    """Busca o arquivo employees_*.csv mais recente na pasta data."""
+    padrao_busca = os.path.join(os.path.dirname(__file__), INPUT_DIR, "employees_*.csv")
+    arquivos = glob.glob(padrao_busca)
+    
+    if not arquivos:
+        print(f"❌ Erro: Nenhum arquivo employees_*.csv encontrado em {INPUT_DIR}.")
         return []
-    with open(caminho, mode='r', encoding='utf-8') as f:
+    
+    # Pega o último criado (ordem alfabética do timestamp)
+    arquivo_mais_recente = max(arquivos, key=os.path.getctime)
+    print(f"📂 Lendo funcionários do arquivo: {os.path.basename(arquivo_mais_recente)}")
+    
+    funcionarios = []
+    with open(arquivo_mais_recente, mode='r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             funcionarios.append(row)
     return funcionarios
+
 
 def gerar_horario_com_ruido(hora_base, ruido_minutos=10):
     """Adiciona variação de minutos para não ficar horário robótico (ex: 08:00:00)."""
@@ -74,14 +82,20 @@ def gerar_marcacoes_do_dia():
     return marcacoes
 
 def main():
-    funcionarios = carregar_funcionarios()
+    funcionarios = carregar_funcionarios_mais_recente()
     if not funcionarios:
         return
+    
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nome_arquivo_dinamico = f"attendance_{timestamp_str}.json"
+    
+    caminho_saida = os.path.join(os.path.dirname(__file__), INPUT_DIR, nome_arquivo_dinamico)
 
     print(f"🚀 Iniciando geração de pontos para {len(funcionarios)} funcionários...")
     print(f"📅 Período: {DATA_INICIO.date()} até {DATA_FIM.date()}")
 
     registros_ponto = []
+ 
     
     data_atual = DATA_INICIO
     while data_atual <= DATA_FIM:
@@ -124,12 +138,12 @@ def main():
         data_atual += timedelta(days=1)
 
     # Salva JSON
-    caminho_saida = os.path.join(os.path.dirname(__file__), OUTPUT_FILE)
     with open(caminho_saida, 'w', encoding='utf-8') as f:
         json.dump(registros_ponto, f, indent=2, ensure_ascii=False)
 
-    print(f"✅ Arquivo gerado com sucesso: {OUTPUT_FILE}")
+    print(f"✅ Arquivo gerado com sucesso: {nome_arquivo_dinamico}")
     print(f"📊 Total de registros de ponto gerados: {len(registros_ponto)}")
+
 
 if __name__ == "__main__":
     main()

@@ -1,14 +1,14 @@
 import csv
 import json
 import os
+import glob
 import random
 import uuid
 from datetime import datetime, timedelta, time
 from faker import Faker
 
 # --- CONFIGURAÇÕES ---
-EMPLOYEES_FILE = "../../data/employees.csv"
-ATTENDANCE_FILE = "../../data/attendance.json"
+DATA_DIR = "../../data"
 CHURN_RATE = 0.05  # 5% dos ativos serão substituídos nesta atualização
 PROB_ESQUECER_PONTO = 0.02
 PROB_ATRASO = 0.05
@@ -19,21 +19,34 @@ PROB_FALTA = 0.01
 fake = Faker('pt_BR')
 Faker.seed(random.randint(0, 9999)) # Seed aleatória para variar a cada execução
 
-def carregar_dados():
-    path_emp = os.path.join(os.path.dirname(__file__), EMPLOYEES_FILE)
-    path_att = os.path.join(os.path.dirname(__file__), ATTENDANCE_FILE)
+def carregar_dados_mais_recentes():
+    """Busca os arquivos employees_*.csv e attendance_*.json mais recentes."""
     
-    if not os.path.exists(path_emp) or not os.path.exists(path_att):
-        print("❌ Arquivos base não encontrados. Rode os geradores iniciais primeiro.")
+    # Busca Employees
+    padrao_emp = os.path.join(os.path.dirname(__file__), DATA_DIR, "employees_*.csv")
+    arqs_emp = glob.glob(padrao_emp)
+    if not arqs_emp:
+        print("❌ Erro: Nenhum arquivo employees encontrado.")
         exit()
+    path_emp_recente = max(arqs_emp, key=os.path.getctime)
+    
+    # Busca Attendance
+    padrao_att = os.path.join(os.path.dirname(__file__), DATA_DIR, "attendance_*.json")
+    arqs_att = glob.glob(padrao_att)
+    if not arqs_att:
+        print("❌ Erro: Nenhum arquivo attendance encontrado.")
+        exit()
+    path_att_recente = max(arqs_att, key=os.path.getctime)
 
-    with open(path_emp, 'r', encoding='utf-8') as f:
+    print(f"📂 Carregando base: {os.path.basename(path_emp_recente)} e {os.path.basename(path_att_recente)}")
+
+    with open(path_emp_recente, 'r', encoding='utf-8') as f:
         employees = list(csv.DictReader(f))
         
-    with open(path_att, 'r', encoding='utf-8') as f:
+    with open(path_att_recente, 'r', encoding='utf-8') as f:
         attendance = json.load(f)
         
-    return employees, attendance, path_emp, path_att
+    return employees, attendance
 
 def obter_ultima_data_ponto(attendance_list):
     """Descobre qual foi o último dia processado no JSON"""
@@ -96,7 +109,7 @@ def processar_turnover(employees):
             "nome": nome,
             "cpf": fake.cpf(),
             "data_nascimento": fake.date_of_birth(minimum_age=18, maximum_age=50).isoformat(),
-            "endereco": fake.address().replace('\n', ', '),
+            "endereco": f"{fake.street_address()}, São Paulo - SP, CEP {fake.postcode()}",
             "telefone": fake.phone_number(),
             "departamento": demitido['departamento'], # Mantém setor
             "cargo": demitido['cargo'],               # Mantém cargo (reposição)
@@ -190,8 +203,8 @@ def gerar_ponto_incremental(employees, attendance_list):
     return attendance_list
 
 def main():
-    # 1. Carrega
-    emps, atts, path_emp, path_att = carregar_dados()
+    # 1. Carrega os dados mais recentes
+    emps, atts = carregar_dados_mais_recentes()
     
     # 2. Atualiza Funcionários (Turnover)
     emps_atualizados = processar_turnover(emps)
@@ -199,17 +212,27 @@ def main():
     # 3. Atualiza Pontos (Incremental)
     atts_atualizados = gerar_ponto_incremental(emps_atualizados, atts)
     
-    # 4. Salva Funcionários
-    with open(path_emp, 'w', newline='', encoding='utf-8') as f:
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    novo_nome_emp = f"employees_{timestamp_str}.csv"
+    novo_nome_att = f"attendance_{timestamp_str}.json"
+    
+    path_novo_emp = os.path.join(os.path.dirname(__file__), DATA_DIR, novo_nome_emp)
+    path_novo_att = os.path.join(os.path.dirname(__file__), DATA_DIR, novo_nome_att)
+    
+
+    
+    # 4. Salva Funcionários (Arquivo Novo)
+    with open(path_novo_emp, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=emps_atualizados[0].keys())
         writer.writeheader()
         writer.writerows(emps_atualizados)
         
-    # 5. Salva Pontos
-    with open(path_att, 'w', encoding='utf-8') as f:
+    with open(path_novo_att, 'w', encoding='utf-8') as f:
         json.dump(atts_atualizados, f, indent=2, ensure_ascii=False)
         
-    print("🚀 Atualização concluída com sucesso!")
+    print(f"🚀 Atualização concluída!")
+    print(f"💾 Novos arquivos gerados:\n   -> {novo_nome_emp}\n   -> {novo_nome_att}")
 
 if __name__ == "__main__":
     main()
