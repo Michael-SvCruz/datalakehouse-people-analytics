@@ -20,10 +20,14 @@ A solução implementa um pipeline completo, desde a ingestão de dados brutos a
 
 O fluxo de dados foi desenhado para simular um ambiente corporativo real:
 
-1.  **Geração de Dados (Source):** Scripts Python geram dados sintéticos complexos (JSON/CSV) simulando sistemas de RH e relógios de ponto IoT.
-2.  **Ingestão (Bronze):** Carga dos dados brutos no Data Lake (S3/DBFS).
-3.  **Refinamento (Silver):** Limpeza, deduplicação, tratamento de tipos e regras de negócio (ex: cálculo de horas trabalhadas).
-4.  **Agregação (Gold):** Tabelas modeladas (Star Schema) prontas para BI e Analytics.
+1.  **Geração de Dados (Source):** Scripts Python geram dados sintéticos complexos (JSON/CSV) simulando sistemas de RH e relógios de ponto IoT. Os arquivos são gerados com versionamento por timestamp (`employees_20251217_1000.csv`).
+2.  **Ingestão (Bronze):** Ingestão via **Databricks Autoloader** (`cloudFiles`).
+    - Utiliza **Spark Structured Streaming** em modo `AvailableNow` (Batch).
+    - Schema Evolution e Schema Inference ativados.
+    - Armazena histórico completo (Full Snapshot Append-Only).
+3.  **Refinamento (Silver):** (Em breve) Limpeza, deduplicação (Merge), tratamento de tipos e regras de negócio.
+4.  **Agregação (Gold):** (Em breve) Tabelas modeladas (Star Schema) prontas para BI e Analytics.
+
 
 --- 
 
@@ -35,9 +39,10 @@ Abaixo, o status atual do desenvolvimento:
     - [x] Script de Funcionários (Lógica de Pirâmide Hierárquica)
     - [x] Script de Ponto Eletrônico (Simulação de atrasos, faltas e escalas)
     - [x] Script de Carga Incremental (Turnover e Atualização Diária)
-- [ ] **Ingestão de Dados (Camada Bronze)**
-    - [ ] Configuração do Databricks/S3
-    - [ ] Ingestão de CSV e JSON (Autoloader/Copy Into)
+- [x] **Ingestão de Dados (Camada Bronze)**
+    - [x] Configuração do Unity Catalog e Volumes
+    - [x] Pipeline de Ingestão com Autoloader (CSV e JSON)
+    - [x] Captura de Metadados (`_metadata.file_path`, `data_ingestao`)
 - [ ] **Processamento (Camada Silver)**
     - [ ] Tratamento de Schema e Qualidade de Dados
     - [ ] Explode de JSONs aninhados
@@ -53,21 +58,25 @@ Abaixo, o status atual do desenvolvimento:
 |Categoria|Tecnologias|
 |---------|-----------|
 |Linguagem|Python 3.10, SQL|
-|Cloud Provider|AWS (S3, Glue, IAM)
+|Cloud Provider|AWS (S3, Glue, IAM, Databricks Community)
 |Infra as Code|Terraform|
 |Processamento|Apache Spark (PySpark), Delta Lake|
-|Orquestração|Apache Airflow (via Astronomer)|
+|Catálogo de Dados|Unity Catalog|
+|Orquestração|Apache Airflow (via Astronomer), Databricks Workflows (Planejado)|
 |Data Warehouse|Snowflake (Planejado)|
 |Qualidade de Dados|Great Expectations (Planejado)|
 
 ---
 ## 📂 Estrutura do Repositório
 ```hr-analytics-pipeline/
-├── astro_airflow/      # Orquestração (DAGs do Airflow)
+├── astro_airflow/      # (Em breve) Orquestração (DAGs do Airflow)
 ├── infrastructure/     # Código Terraform (IaC)
 ├── src/                # Scripts Python e Spark
 │   ├── data_generator/ # Simulação de dados de RH
-│   └── glue_jobs/      # Jobs de ETL
+│   ├── 00-bronze/      # Notebooks de Ingestão (Autoloader)
+│   ├── 01-silver/      # (Em breve) Notebooks de Tratamento
+│   ├── 02-gold/        # (Em breve) Notebooks de Agregação
+│   └── glue_jobs/      # (Em breve) Jobs de ETL
 ├── notebooks/          # Sandbox para exploração (Databricks)
 └── tests/              # Testes unitários
 ```
@@ -76,5 +85,8 @@ Abaixo, o status atual do desenvolvimento:
 Para gerar a massa de dados inicial, acesse a documentação específica do módulo:
 [📖 Ir para Documentação do Gerador de Dados](./src/data_generator/README.md)
 
+## 🥉 Documentação da Camada Bronze
+Para entender os detalhes técnicos da ingestão:
+[📖 Ir para Documentação da Bronze](./src/00-bronze/README.md)
 ---
 **Desenvolvido por Michael Cruz como parte do portfólio de Engenharia de Dados.**
